@@ -1,0 +1,7 @@
+{
+  "name": "MYRA AI",
+  "description": "Advanced Personal AI Assistant powered by Gemini with real-time Google Search grounding, Hinglish voice interaction, and rapid audio response modules.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
