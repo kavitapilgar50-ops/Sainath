@@ -7,6 +7,7 @@ import com.example.data.local.AppDatabase
 import com.example.data.model.AssistantState
 import com.example.data.model.ChatMessage
 import com.example.data.repository.MyraRepository
+import com.example.service.MyraBackgroundService
 import com.example.voice.MyraVoiceEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -50,6 +51,9 @@ class MyraViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    private val _isBackgroundServiceActive = MutableStateFlow(false)
+    val isBackgroundServiceActive: StateFlow<Boolean> = _isBackgroundServiceActive.asStateFlow()
 
     init {
         // Wire voice engine callbacks
@@ -200,6 +204,17 @@ class MyraViewModel(application: Application) : AndroidViewModel(application) {
         _isSearchGroundingEnabled.value = !_isSearchGroundingEnabled.value
     }
 
+    fun toggleBackgroundService(enable: Boolean) {
+        val app = getApplication<Application>()
+        if (enable) {
+            MyraBackgroundService.start(app)
+            _isBackgroundServiceActive.value = true
+        } else {
+            MyraBackgroundService.stop(app)
+            _isBackgroundServiceActive.value = false
+        }
+    }
+
     fun dismissError() {
         _errorMessage.value = null
     }
@@ -207,5 +222,8 @@ class MyraViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         voiceEngine.release()
+        if (_isBackgroundServiceActive.value) {
+            MyraBackgroundService.stop(getApplication())
+        }
     }
 }

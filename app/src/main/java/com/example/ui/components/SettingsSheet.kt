@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -72,6 +73,7 @@ fun SettingsSheet(
     onSpeechRateChange: (Float) -> Unit,
     customApiKey: String,
     onCustomApiKeyChange: (String) -> Unit,
+    onOpenPermissions: () -> Unit = {},
     onClearChatHistory: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -269,7 +271,31 @@ fun SettingsSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 4. Clear chat history
+            // 4. Background & Permissions Settings
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "बैकग्राउंड & परमिशन प्रबंधन", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+
+            OutlinedButton(
+                onClick = {
+                    onDismiss()
+                    onOpenPermissions()
+                },
+                modifier = Modifier.fillMaxWidth().testTag("open_permissions_from_settings"),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonCyan),
+                border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
+            ) {
+                Icon(imageVector = Icons.Default.Security, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("माइक्रोफ़ोन और बैकग्राउंड अनुमतियाँ देखें", fontSize = 13.sp)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 5. Clear chat history
             OutlinedButton(
                 onClick = {
                     onClearChatHistory()

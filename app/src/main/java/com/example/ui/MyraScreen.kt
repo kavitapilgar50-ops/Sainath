@@ -71,9 +71,11 @@ import androidx.core.content.ContextCompat
 import com.example.data.model.AssistantState
 import com.example.ui.components.ChatMessageCard
 import com.example.ui.components.NeuralOrbVisualizer
+import com.example.ui.components.PermissionsDialog
 import com.example.ui.components.QuickPromptCapsules
 import com.example.ui.components.SettingsSheet
 import com.example.ui.components.VoiceModeBottomSheet
+import androidx.compose.material.icons.filled.Security
 import com.example.ui.theme.AccentCoral
 import com.example.ui.theme.CardBorder
 import com.example.ui.theme.DarkSurface
@@ -104,6 +106,18 @@ fun MyraScreen(viewModel: MyraViewModel) {
     var inputPrompt by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
     var showVoiceMode by remember { mutableStateOf(false) }
+    var showPermissionsDialog by remember { mutableStateOf(false) }
+
+    val isBackgroundActive by viewModel.isBackgroundServiceActive.collectAsState()
+
+    var hasMicPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
 
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -127,8 +141,11 @@ fun MyraScreen(viewModel: MyraViewModel) {
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
+        hasMicPermission = isGranted
         if (isGranted) {
             viewModel.startVoiceRecognition()
+        } else {
+            showPermissionsDialog = true
         }
     }
 
@@ -138,10 +155,12 @@ fun MyraScreen(viewModel: MyraViewModel) {
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
 
+        hasMicPermission = hasPermission
+
         if (hasPermission) {
             viewModel.toggleVoiceRecognition()
         } else {
-            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            showPermissionsDialog = true
         }
     }
 
@@ -274,6 +293,42 @@ fun MyraScreen(viewModel: MyraViewModel) {
 
                         Spacer(modifier = Modifier.width(6.dp))
 
+                        // Permissions & Background Button
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(
+                                    if (isBackgroundActive) EmeraldGrounded.copy(alpha = 0.15f)
+                                    else DarkSurfaceVariant
+                                )
+                                .border(
+                                    1.dp,
+                                    if (isBackgroundActive) EmeraldGrounded else if (!hasMicPermission) AccentCoral else CardBorder,
+                                    RoundedCornerShape(16.dp)
+                                )
+                                .clickable { showPermissionsDialog = true }
+                                .padding(horizontal = 8.dp, vertical = 6.dp)
+                                .testTag("permissions_and_background_button")
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Security,
+                                    contentDescription = "Permissions & Background",
+                                    tint = if (isBackgroundActive) EmeraldGrounded else if (!hasMicPermission) AccentCoral else NeonCyan,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (isBackgroundActive) "BG Active" else if (!hasMicPermission) "माइक अनुमति दें" else "अनुमतियाँ",
+                                    color = if (isBackgroundActive) EmeraldGrounded else if (!hasMicPermission) AccentCoral else TextPrimary,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
                         // Settings Button
                         IconButton(
                             onClick = { showSettings = true },
@@ -298,6 +353,43 @@ fun MyraScreen(viewModel: MyraViewModel) {
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // Permission request banner if microphone permission is not granted
+            if (!hasMicPermission) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(AccentCoral.copy(alpha = 0.15f))
+                        .clickable { showPermissionsDialog = true }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = null,
+                            tint = AccentCoral,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "माइक्रोफ़ोन और बैकग्राउंड अनुमति आवश्यक है — सेट करें",
+                            color = TextPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(AccentCoral)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text("अनुमति दें", color = DeepSpace, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
             // Live Status Banner when speaking or listening
             AnimatedVisibility(
                 visible = assistantState != AssistantState.IDLE,
@@ -597,6 +689,7 @@ fun MyraScreen(viewModel: MyraViewModel) {
             onSpeechRateChange = { viewModel.setSpeechRate(it) },
             customApiKey = customApiKey,
             onCustomApiKeyChange = { viewModel.setCustomApiKey(it) },
+            onOpenPermissions = { showPermissionsDialog = true },
             onClearChatHistory = { viewModel.clearChat() }
         )
     }
@@ -609,6 +702,16 @@ fun MyraScreen(viewModel: MyraViewModel) {
             lastMyraResponse = lastResponseText,
             onMicClick = { requestMicAndListen() },
             onStopSpeechClick = { viewModel.stopSpeaking() }
+        )
+    }
+
+    if (showPermissionsDialog) {
+        PermissionsDialog(
+            onDismiss = { showPermissionsDialog = false },
+            onBackgroundServiceToggle = { enable ->
+                viewModel.toggleBackgroundService(enable)
+            },
+            isBackgroundActive = isBackgroundActive
         )
     }
 }
